@@ -31,6 +31,16 @@ class UriString {
             return Uri.parse(uriString).baseHost
         }
 
+        fun sameOrSubdomain(childUri: Uri?, parent: String): Boolean {
+            val childHost = childUri?.baseHost
+            if (childUri == null || childHost == null) {
+                return false
+            }
+
+            val parentHost = host(parent) ?: return false
+            return parentHost == childHost || childHost.endsWith(".$parentHost")
+        }
+
         fun sameOrSubdomain(child: String, parent: String): Boolean {
             val childHost = host(child) ?: return false
             val parentHost = host(parent) ?: return false

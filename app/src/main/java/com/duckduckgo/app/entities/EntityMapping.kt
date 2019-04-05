@@ -16,8 +16,10 @@
 
 package com.duckduckgo.app.entities
 
+import android.net.Uri
 import com.duckduckgo.app.entities.db.EntityListEntity
 import com.duckduckgo.app.global.UriString
+import com.duckduckgo.app.global.baseHost
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,15 +27,37 @@ import javax.inject.Singleton
 @Singleton
 class EntityMapping @Inject constructor() {
 
-    var entities: List<EntityListEntity> = emptyList()
+    private var entities: List<EntityListEntity> = emptyList()
+    private var entitiesMap: MutableMap<String, MutableList<EntityListEntity>> = mutableMapOf()
 
     fun updateEntities(entities: List<EntityListEntity>) {
         Timber.d("updateEntities")
         this.entities = entities
+
+        updateEntriesMap()
+    }
+
+    private fun updateEntriesMap() {
+        entitiesMap = mutableMapOf()
+        entities.forEach { entity ->
+            val topLevelDomain = getTopLevelDomain(entity.domainName)
+
+            if (entitiesMap.containsKey(topLevelDomain)) {
+                entitiesMap[topLevelDomain]?.add(entity)
+            } else {
+                entitiesMap[topLevelDomain] = mutableListOf(entity)
+            }
+        }
     }
 
     fun entityForUrl(url: String): EntityListEntity? {
-        return entities.find { UriString.sameOrSubdomain(url, it.domainName) }
+        val childUri = Uri.parse(url) ?: return null
+        val baseHost = childUri.baseHost ?: return null
+        val topLevelDomain = getTopLevelDomain(baseHost)
+        return entitiesMap[topLevelDomain]?.find { UriString.sameOrSubdomain(childUri, it.domainName) }
     }
 
+    private fun getTopLevelDomain(url: String): String {
+        return url.split(".").last()
+    }
 }
